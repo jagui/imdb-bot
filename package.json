@@ -10,9 +10,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "discord.js": "^12.5.1",
+    "discord.js": "^11.6.4",
     "dotenv": "^8.2.0",
-    "node-sqlite": "^0.0.2-security",
     "sqlite": "^4.0.19",
     "sqlite3": "^5.0.0"
   },

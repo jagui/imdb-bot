@@ -53,7 +53,7 @@ async function anniversary(date) {
 		: principal.date_of_death
 	).substring(0, 4);
 
-	const embed = new Discord.MessageEmbed()
+	const embed = new Discord.RichEmbed()
 		.setColor('#0099ff')
 		.setTitle(principal.name)
 		.setURL(`https://www.imdb.com/name/${principal.imdb_name_id}`)
@@ -88,7 +88,7 @@ async function find(name) {
 
 	if (!principal) return `Sorry, couldn't find ${name}\u{1F3DC}`;
 
-	const embed = new Discord.MessageEmbed()
+	const embed = new Discord.RichEmbed()
 		.setColor('#0099ff')
 		.setTitle(principal.name)
 		.setURL(`https://www.imdb.com/name/${principal.imdb_name_id}`)
@@ -163,12 +163,12 @@ client.on('message', async (message) => {
 				`${maybeYear} is not a valid year, ${message.author}!`,
 			);
 		}
-		message.channel.send(await top(year));
+		await message.channel.send(await top(year));
 		break;
 	}
 	case 'anniversary': {
 		const today = new (require('./dates.js').Today)();
-		message.channel.send(await anniversary(today));
+		await message.channel.send(await anniversary(today));
 		break;
 	}
 	case 'find': {
@@ -178,7 +178,7 @@ client.on('message', async (message) => {
 			);
 		}
 		const maybePerson = args.join(' ');
-		message.channel.send(await find(maybePerson));
+		await message.channel.send(await find(maybePerson));
 		break;
 	}
 	default:
@@ -187,13 +187,14 @@ client.on('message', async (message) => {
 });
 
 // Requires activating the Presence Intent in the bot configuration page
-client.on('presenceUpdate', async (oldPresence, newPresence) => {
+client.on('presenceUpdate', async (oldMember, newMember) => {
 	if (
-		!oldPresence ||
-		(oldPresence.status !== 'online' && newPresence.status === 'online')
+		!oldMember ||
+		(oldMember.presence.status !== 'online' &&
+			newMember.presence.status === 'online')
 	) {
 		const today = new (require('./dates.js').Today)();
-		newPresence.user.send(await anniversary(today));
+		await newMember.send(await anniversary(today));
 	}
 });
 
