@@ -23,7 +23,7 @@ async function top(year) {
 	if (movies.length) {
 		text = `These are the top ${topCount} movies from ${year}:\n`;
 		movies.forEach((movie) => {
-			text = text.concat(movie.original_title + '\t' + movie.wr + '\n');
+			text = text.concat(`\t\u{27A1} ${movie.original_title}\t  ${movie.wr}\n`);
 		});
 	}
 	else {
@@ -44,23 +44,81 @@ async function anniversary(date) {
 	const principal = await db.get(
 		`SELECT names.name, names.imdb_name_id, names.date_of_birth, names.date_of_death, COUNT(title_principals.imdb_name_id) roles FROM names LEFT JOIN title_principals on names.imdb_name_id == title_principals.imdb_name_id WHERE date_of_birth LIKE '%-${date.someYear()}' OR date_of_death LIKE '%-${date.someYear()}' GROUP BY name ORDER BY RANDOM() LIMIT 1;`,
 	);
-	if (!principal) return;
-	let text = `Welcome back!\nDid you know that ${principal.name} ${
-		principal.date_of_birth ? 'was born' : 'died'
-	} on a day like this, ${date.day} of ${date.month} and features in ${
-		principal.roles
-	} films, like:\n`;
+
+	if (!principal.roles) return;
+
+	const isBirthDate = principal.date_of_birth.endsWith(date.someYear());
+	const anniversaryYear = (isBirthDate
+		? principal.date_of_birth
+		: principal.date_of_death
+	).substring(0, 4);
+
+	const embed = new Discord.MessageEmbed()
+		.setColor('#0099ff')
+		.setTitle(principal.name)
+		.setURL(`https://www.imdb.com/name/${principal.imdb_name_id}`)
+		.setDescription(
+			`Did you know that ${principal.name} ${
+				isBirthDate ? 'was born' : 'died'
+			} on a day like this, ${date.day()} of ${date.month()} of ${anniversaryYear} ${
+				isBirthDate ? '\u{1F382}' : '\u{1faa6}'
+			} and features in the following ${principal.roles} films:\n`,
+		);
 
 	const movies = await db.all(
 		`SELECT * FROM movies JOIN title_principals ON movies.imdb_title_id = title_principals.imdb_title_id AND title_principals.imdb_name_id =  '${principal.imdb_name_id}'`,
 	);
 	movies.forEach((row) => {
-		text += `${row.title}\n`;
+		embed.addField(
+			`\t\u{27A1} ${row.original_title} (${row.year})`,
+			`[${row.category}](https://imdb.com/title/${row.imdb_title_id})`,
+			false,
+		);
 	});
-
 	await db.close();
+	return embed;
+}
 
-	return text;
+async function find(name) {
+	const db = await openDatabase();
+
+	const principal = await db.get(
+		`SELECT imdb_name_id, name, bio FROM names WHERE name LIKE '%${name}%' ORDER BY RANDOM() LIMIT 1;`,
+	);
+
+	if (!principal) return `Sorry, couldn't find ${name}\u{1F3DC}`;
+
+	const embed = new Discord.MessageEmbed()
+		.setColor('#0099ff')
+		.setTitle(principal.name)
+		.setURL(`https://www.imdb.com/name/${principal.imdb_name_id}`)
+		.setDescription(
+			principal.bio
+				.split('.')
+				.slice(0, 2)
+				.join('.')
+				.concat(
+					` [more](https://www.imdb.com/name/${principal.imdb_name_id}/bio)`,
+				),
+		);
+
+	const movies = await db.all(
+		`SELECT * FROM movies JOIN title_principals ON movies.imdb_title_id = title_principals.imdb_title_id AND title_principals.imdb_name_id = '${principal.imdb_name_id}' ORDER BY RANDOM()`,
+	);
+
+	embed.addField(
+		`${principal.name} is featured in ${movies.length} movies, including:`,
+		'\u{1F3A6}',
+	);
+	movies.slice(0, 10).forEach((row) => {
+		embed.addField(
+			`\t\u{27A1} ${row.original_title} (${row.year})`,
+			`[${row.category}](https://imdb.com/title/${row.imdb_title_id})`,
+			true,
+		);
+	});
+	await db.close();
+	return embed;
 }
 
 /*
@@ -111,6 +169,16 @@ client.on('message', async (message) => {
 	case 'anniversary': {
 		const today = new (require('./dates.js').Today)();
 		message.channel.send(await anniversary(today));
+		break;
+	}
+	case 'find': {
+		if (!args.length) {
+			return message.channel.send(
+				`Please tell me which person to look for : !find Jane Doe, ${message.author}!`,
+			);
+		}
+		const maybePerson = args.join(' ');
+		message.channel.send(await find(maybePerson));
 		break;
 	}
 	default:
