@@ -13,7 +13,7 @@ async function openDatabase() {
 }
 
 async function top(year) {
-	const topCount = process.env.topCount ?? 20;
+	const topCount = process.env.topCount || 20;
 	const db = await openDatabase();
 	const movies = await db.all(
 		` SELECT original_title, (total_votes * mean_vote + 25000 * (SELECT AVG(mean_vote) FROM ratings)) / (total_votes + 25000) AS wr FROM movies JOIN ratings ON movies.imdb_title_id=ratings.imdb_title_id WHERE YEAR ='${year}' ORDER BY wr DESC LIMIT ${topCount};`,
@@ -23,7 +23,7 @@ async function top(year) {
 	if (movies.length) {
 		text = `These are the top ${topCount} movies from ${year}:\n`;
 		movies.forEach((movie) => {
-			text = top.concat(movie.original_title + '\t' + movie.wr + '\n');
+			text = text.concat(movie.original_title + '\t' + movie.wr + '\n');
 		});
 	}
 	else {
@@ -71,7 +71,7 @@ async function anniversary(date) {
 // *NEVER* store the bot token in source control
 const dotenv = require('dotenv');
 dotenv.config();
-const prefix = process.env.prefix ?? '!';
+const prefix = process.env.prefix || '!';
 const token = process.env.token;
 
 // Create a Discord.js client.
